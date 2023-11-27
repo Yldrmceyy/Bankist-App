@@ -61,12 +61,13 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
+/////////////////////////////////////////////////
 
-/////////////////////////////////////////////////
-/////////////////////////////////////////////////
+
+//HAREKETLER DİZİNİ OLUŞTURDUK
 const displayMovements=function(movements){
-  containerMovements.innerHTML='';
-  //.text.content= 0;
+  //containerApp.innerHTML='';
+  //.text.content=0;
   movements.forEach(function(mov,i){  //sablon değişmezi kullanarak html ekledik
     const type = mov > 0 ? 'deposit' : 'withdrawal';        
     const html =` <div class="movements__row">   
@@ -75,131 +76,140 @@ const displayMovements=function(movements){
   </div>`;
   containerMovements.insertAdjacentHTML('afterbegin',html);
   });
-
 };
-displayMovements(account1.movements);
+//displayMovements(account3.movements); kaldırıyoruz çünkü kullanıcı giriş yaptığında cagırmak ıstıyoruz.
+
+
+//TOPLAM BAKİYE HESABI EN TEPEDEKİ 
+const calcDisplayBalance=function(movements){
+  const  balance= movements.reduce((acc,mov)=> acc+ mov ,0);
+  labelBalance.textContent=`${balance} €`;
+};
+//calcDisplayBalance(account3.movements);
+
+
 
 const calcDisplaySummary = function(movements){
-  const incomes= movements
-  .filter(mov=> mov > 0)
-  .reduce((acc, mov) => acc + mov, 0);
-  labelSumIn.textContent=`${incomes}€`;
+  //EN ALTTAKİ "in" BÖLÜMÜ İÇİN TOPLAM HESABA GELENLER
+  const incomes = movements
+  .filter(mov=> mov>0)
+  .reduce((acc,mov) => acc+mov ,0);
+  labelSumIn.textContent= `${incomes} €`
 
-  const out= movements
-  .filter(mov => mov< 0)
-  .reduce((acc,mov)=>Math.abs(acc +mov),0);
-  labelSumOut.textContent=`${out}€`;
+  //EN ALTTAKİ "out" BÖLÜMÜ İÇİn HESABPTAN GİDENLER
+  const out = movements
+  .filter(mov=> mov<0)
+  .reduce((acc,mov) => (acc+mov) ,0);
+  labelSumOut.textContent= `${Math.abs(out)} €`
 
-  const interest=movements.filter(mov=> mov>0 )
+  //EN ALTTAKİ "interest" BÖLÜMÜ İÇİn faiz
+  const interest=movements
+  .filter(mov=> mov>0 )
   .map(deposit=> (deposit*1.2) / 100)
   //bank yeni yasa getirdi, faiz oranı en az bir olması gerekiyor yoksa fazi vermem diyor.
   .filter((int,i,arr)=>{
+    console.log(arr);
     return int >= 1;
   })
   .reduce((acc,int)=> acc+int , 0);
   labelSumInterest.textContent=`${interest}€`  ;
-  
-};
 
-calcDisplaySummary(account1.movements);
+} 
+//calcDisplaySummary(account3.movements);  (bu 3 tanesini sil)
 
-
-
-//accumulator ->SNOWBALL  //TOPLAM MİKTARI DEĞİŞTİRECEĞİZ
-const calcDisplayBalance =function(movements){
-  const balance = movements.reduce((acc,cur) => acc + cur, 0);
-  labelBalance.textContent=`${balance} EUR`;
-};
-calcDisplayBalance(account1.movements);
-
-
-const createUsernames = function (accs) {
-  accs.forEach(function (acc) {
-    acc.username = acc.owner
-      .toLowerCase()
-      .split(' ')
-      .map(name => name[0])
-      .join('');
+//USERNAME oluşturduk
+const createUsernames=function(accs){
+  accs.forEach(function(acc){
+    acc.username= acc.owner
+    .toLowerCase()
+    .split(' ')
+    .map(name => name[0])
+    .join('');
+   // console.log(acc.username);
   });
 };
+createUsernames(accounts);
 
-// Event handlers
-let currentAccount;
+//EVENT HANDLER (LOGİN)
+let currentAccount; //çünkü daha sonra current account ile diğer işlevlei yapacahız 
 
 btnLogin.addEventListener('click', function (e) {
   // Prevent form from submitting
   e.preventDefault();
 
+  //ACCOUNT BULMAMIZ LAZIM, ÇÜNKÜ KULLANICI GİRİŞ YAPTIGINDA TÜM BİLGİLERİNİ VERMELİ
   currentAccount = accounts.find(
     acc => acc.username === inputLoginUsername.value
   );
   console.log(currentAccount);
 
-  if (currentAccount?.pin === Number(inputLoginPin.value)) {
-    // Display UI and message
-    labelWelcome.textContent = `Welcome back, ${
-      currentAccount.owner.split(' ')[0]
-    }`;
-    containerApp.style.opacity = 100;
+  //current ACCOUNT VARSA (? işareti)
+  if(currentAccount?.pin === Number(inputLoginPin.value)){
+ //KULLANICI İSİM VE ŞİFRE EŞLEŞTİĞİNDE;;
+  //Display UI and Messeage
+  labelWelcome.textContent= `Welcome back,
+  ${currentAccount.owner.split(' ')[0]
+}`;
+containerApp.style.opacity=100;
 
-    // Clear input fields
-    inputLoginUsername.value = inputLoginPin.value = '';
-    inputLoginPin.blur();
+  //Dİsplay movements
+ displayMovements(currentAccount.movements);
 
-    // Update UI
-    updateUI(currentAccount);
+  //Display balance
+calcDisplayBalance(currentAccount.movements);
+
+  //Display summary
+  calcDisplaySummary(currentAccount.movements);
   }
 });
-/////////////////////////////////////////////////
+
+
+
+
 /////////////////////////////////////////////////
 // LECTURES
+const movements = [200, 450, -400, 3000, -650, -130, 70, 1300];
 
+/*
+const currencies = new Map([
+  ['USD', 'United States dollar'],
+  ['EUR', 'Euro'],
+  ['GBP', 'Pound sterling'],
+]);
 
 const movements = [200, 450, -400, 3000, -650, -130, 70, 1300];
 const eurToUSD=1.1;
 
-//callback function
-//const movementUSD =movements.map(function(mov){
- // return mov* eurToUSD;
-//});
- 
-//arrow function çevrildi
-const movemenstUSD= movements.map(mov=> mov*eurToUSD );
+const movementsUSD=movements.map(mov=> mov*eurToUSD);
 console.log(movements);
-console.log(movemenstUSD);
+console.log(movementsUSD);
 
 const movementsDescriptions = movements.map((mov,i,arr)=>{
- if(mov>0){
-  return `Movements ${i+1} : You deposited ${mov}`;
- }else{
-  return `Movements ${i+1} : You withdrew ${Math.abs(mov)}`;
- }
- // `Movements ${i+1}: You ${mov>0 ? 'deposited' : 'withdrew'} ${math.abs(mov)`
-});
-console.log(movementsDescriptions);
+  if(mov>0){
+   return `Movements ${i+1} : You deposited ${mov}$`;
+  }else{
+   return `Movements ${i+1} : You withdrew ${Math.abs(mov)}$`;
+  }
+  // `Movements ${i+1}: You ${mov>0 ? 'deposited' : 'withdrew'} ${math.abs(mov)`
+ });
+ console.log(movementsDescriptions);
 
-
-const deposits= movements.filter(function(mov){
-  return mov > 0;
-});
-console.log(movements);
+const deposits=movements.filter(mov=> mov>0);
 console.log(deposits);
 
-const withdrawals=movements.filter(mov => mov < 0 );
+
+const withdrawals= movements.filter(mov=> mov< 0);
 console.log(withdrawals);
 
- //MAXImUM VALUE
- const max= movements.reduce((acc,mov) => { if (acc > mov ) return acc;else return mov; },movements[0]);
- console.log(max);
- console.log(movements);
+//MAXImUM VALUE
+const max= movements.reduce((acc,mov) => { if (acc > mov ) return acc;else return mov; },movements[0]);
+console.log(max);
+console.log(movements);
 
-
- //PIPELINE
-
- const totalDepositsUSD=movements
- .filter(mov=> mov>0)
- .map(mov=> mov * eurToUSD)
- .reduce((acc,mov)=> acc+ mov , 0);
+//PIPELINE
+const totalDepositsUSD=movements
+.filter(mov=> mov>0)
+.map(mov=> mov * eurToUSD)
+.reduce((acc,mov)=> acc+ mov , 0);
 console.log(totalDepositsUSD);
-
-
+*/
