@@ -64,11 +64,13 @@ const inputClosePin = document.querySelector('.form__input--pin');
 /////////////////////////////////////////////////
 
 
-//HAREKETLER DİZİNİ OLUŞTURDUK
-const displayMovements=function(movements){
-  //containerApp.innerHTML='';
-  //.text.content=0;
-  movements.forEach(function(mov,i){  //sablon değişmezi kullanarak html ekledik
+//HAREKETLER DİZİNİ OLUŞTURDUKd
+const displayMovements=function(movements,sort=false){
+  containerMovements.innerHTML='';
+
+  const movs=sort? movements.slice().sort((a,b) => a-b ) : movements;
+
+  movs.forEach(function(mov,i){  //sablon değişmezi kullanarak html ekledik
     const type = mov > 0 ? 'deposit' : 'withdrawal';        
     const html =` <div class="movements__row">   
     <div class="movements__type movements__type--${type}">${i+1} ${type}</div>
@@ -81,31 +83,35 @@ const displayMovements=function(movements){
 
 
 //TOPLAM BAKİYE HESABI EN TEPEDEKİ 
-const calcDisplayBalance=function(movements){
-  const  balance= movements.reduce((acc,mov)=> acc+ mov ,0);
-  labelBalance.textContent=`${balance} €`;
+//movements account  olarak değiştiriyoruz.
+const calcDisplayBalance=function(acc){
+  acc.balance= acc.movements.reduce((acc,mov)=> acc+ mov ,0);
+  labelBalance.textContent=`${acc.balance} €`;
 };
 //calcDisplayBalance(account3.movements);
 
 
-
-const calcDisplaySummary = function(movements){
+//movements account  olarak değiştiriyoruz.
+//sadece hareket değil tüm hesabı akarıyoruz
+//Faiz oranlarına erişebilmek için hareketlerden daha fazlasına ihtiyacımız var
+//hareketler yerine şimdi tüm heseabı istiyoruz.o zaman hesaptan hareketleri ve faiz oranını alabiliriz. 
+const calcDisplaySummary = function(acc){
   //EN ALTTAKİ "in" BÖLÜMÜ İÇİN TOPLAM HESABA GELENLER
-  const incomes = movements
+  const incomes =acc.movements
   .filter(mov=> mov>0)
   .reduce((acc,mov) => acc+mov ,0);
   labelSumIn.textContent= `${incomes} €`
 
   //EN ALTTAKİ "out" BÖLÜMÜ İÇİn HESABPTAN GİDENLER
-  const out = movements
+  const out = acc.movements
   .filter(mov=> mov<0)
   .reduce((acc,mov) => (acc+mov) ,0);
   labelSumOut.textContent= `${Math.abs(out)} €`
 
   //EN ALTTAKİ "interest" BÖLÜMÜ İÇİn faiz
-  const interest=movements
+  const interest=acc.movements
   .filter(mov=> mov>0 )
-  .map(deposit=> (deposit*1.2) / 100)
+  .map(deposit=> (deposit* acc.interestRate) / 100)
   //bank yeni yasa getirdi, faiz oranı en az bir olması gerekiyor yoksa fazi vermem diyor.
   .filter((int,i,arr)=>{
     console.log(arr);
@@ -130,6 +136,21 @@ const createUsernames=function(accs){
 };
 createUsernames(accounts);
 
+//updateUı fonksiyonuna atadık 3 ünü.baska türlü üç işlevi account kullanarak cagıramzsdık.
+//bu fonksiyonu herhangi yerde cagırabiliriz bu üç görevi yerine getirecektir.
+const updateUI =function(acc){
+   //Dİsplay movement
+ displayMovements(acc.movements);
+
+ //Display balance burada da tüm hesabı cagıracagız
+calcDisplayBalance(acc);
+
+ //Display summary burada tüm hesabı cagıracagız
+ calcDisplaySummary(acc);
+}
+
+
+
 //EVENT HANDLER (LOGİN)
 let currentAccount; //çünkü daha sonra current account ile diğer işlevlei yapacahız 
 
@@ -152,19 +173,89 @@ btnLogin.addEventListener('click', function (e) {
 }`;
 containerApp.style.opacity=100;
 
-  //Dİsplay movements
- displayMovements(currentAccount.movements);
+//Giriş yapptıktan sonra labeller boş kalsın user ve pın yazsın.
+//Clear input Fields
+inputLoginUsername.value= inputLoginPin.value = '';
+inputLoginPin.blur();
+ 
+updateUI(currentAccount);
+  }
+});
 
-  //Display balance
-calcDisplayBalance(currentAccount.movements);
+btnTransfer.addEventListener('click',function(e){ //varsayılan davranısı engelle, form göndermesin
+  e.preventDefault();
+  const amount = Number(inputTransferAmount.value);
+  const receiverAcc =accounts.find(
+    acc=> acc.username === inputTransferTo.value
+  );
+  console.log(amount, receiverAcc);
 
-  //Display summary
-  calcDisplaySummary(currentAccount.movements);
+  inputTransferAmount.value = inputTransferTo.value = ''; 
+
+  if (amount >0 && 
+    receiverAcc &&
+    currentAccount.balance >= amount && 
+    receiverAcc?.username !== currentAccount.username
+    ){
+
+      //doing the transfers
+      currentAccount.movements.push(-amount);
+      receiverAcc.movements.push(amount);
+
+      updateUI(currentAccount);
   }
 });
 
 
 
+
+btnLoan.addEventListener('click',function(e){
+  e.preventDefault();
+
+  const amount = Number( inputLoanAmount.value);
+  if(amount>0 && currentAccount.movements.some(mov => mov>= amount*0,1)){
+     //add movement
+     currentAccount.movements.push(amount);
+
+     //update UI
+     updateUI(currentAccount);
+  }
+    inputLoanAmount.value='';
+});
+
+
+
+
+
+ 
+btnClose.addEventListener('click',function(e){
+  e.preventDefault();
+
+
+  if(inputCloseUsername.value === currentAccount.username &&
+   Number( inputClosePin.value )=== currentAccount.pin
+   ){
+    const index = accounts.findIndex(
+      acc=> acc.username === currentAccount.username
+    );
+    console.log(index);
+    
+    //delete account
+    accounts.splice(index, 1);
+
+    //Hide UI
+    containerApp.style.opacity=0;
+  }
+   
+  inputCloseUsername.value = inputClosePin.value = ''; 
+});
+
+let sorted=false;
+btnSort.addEventListener('click',function(e){
+ e.preventDefault();
+ displayMovements(currentAccount.movements,!sorted);
+ sorted= !sorted;
+});
 
 /////////////////////////////////////////////////
 // LECTURES
@@ -213,3 +304,98 @@ const totalDepositsUSD=movements
 .reduce((acc,mov)=> acc+ mov , 0);
 console.log(totalDepositsUSD);
 */
+
+//some: CONDITION
+console.log(movements.some(mov=> mov === -130));
+
+//every 
+console.log(movements.every(mov=> mov >0));
+
+//seperate callback
+const deposit = mov => mov>0;
+console.log(movements.some(deposit));
+console.log(movements.every(deposit));
+console.log(movements.filter(deposit));
+
+
+// flat and flatMap
+const arr = [[1, 2, 3], [4, 5, 6], 7, 8];
+console.log(arr.flat());
+
+const arrDeep = [[[1, 2], 3], [4, [5, 6]], 7, 8];
+console.log(arrDeep.flat(2));
+
+// flat
+const overalBalance = accounts
+  .map(acc => acc.movements)
+  .flat()
+  .reduce((acc, mov) => acc + mov, 0);
+console.log(overalBalance);
+
+// flatMap
+const overalBalance2 = accounts
+  .flatMap(acc => acc.movements)
+  .reduce((acc, mov) => acc + mov, 0);
+console.log(overalBalance2);
+
+// Array Methods Practice
+
+// 1.
+const bankDepositSum = accounts
+  .flatMap(acc => acc.movements)
+  .filter(mov => mov > 0)
+  .reduce((sum, cur) => sum + cur, 0);
+
+console.log(bankDepositSum);
+
+// 2.
+// const numDeposits1000 = accounts
+//   .flatMap(acc => acc.movements)
+//   .filter(mov => mov >= 1000).length;
+
+const numDeposits1000 = accounts
+  .flatMap(acc => acc.movements)
+  .reduce((count, cur) => (cur >= 1000 ? ++count : count), 0);
+
+console.log(numDeposits1000);
+
+// Prefixed ++ oeprator
+let a = 10;
+console.log(++a);
+console.log(a);
+
+// 3.
+const { deposits, withdrawals } = accounts
+  .flatMap(acc => acc.movements)
+  .reduce(
+    (sums, cur) => {
+      // cur > 0 ? (sums.deposits += cur) : (sums.withdrawals += cur);
+      sums[cur > 0 ? 'deposits' : 'withdrawals'] += cur;
+      return sums;
+    },
+    { deposits: 0, withdrawals: 0 }
+  );
+
+console.log(deposits, withdrawals);
+
+// 4.
+// this is a nice title -> This Is a Nice Title
+const convertTitleCase = function (title) {
+  const capitalize = str => str[0].toUpperCase() + str.slice(1);
+
+  const exceptions = ['a', 'an', 'and', 'the', 'but', 'or', 'on', 'in', 'with'];
+
+  const titleCase = title
+    .toLowerCase()
+    .split(' ')
+    .map(word => (exceptions.includes(word) ? word : capitalize(word)))
+    .join(' ');
+
+  return capitalize(titleCase);
+};
+
+console.log(convertTitleCase('this is a nice title'));
+console.log(convertTitleCase('this is a LONG title but not too long'));
+console.log(convertTitleCase('and here is another title with an EXAMPLE'));
+
+///////////////////////////////////////
